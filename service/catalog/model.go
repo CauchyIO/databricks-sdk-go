@@ -1974,6 +1974,9 @@ type CreateSchema struct {
 	Name string `json:"name"`
 	// A map of key-value properties attached to the securable.
 	Properties map[string]string `json:"properties,omitempty"`
+	// Secret storage configuration of the schema. Binds the schema to a Unity
+	// Catalog connection that backs external secrets.
+	SecretStorage *SchemaSecretStorage `json:"secret_storage,omitempty"`
 	// Storage root URL for managed tables within schema.
 	StorageRoot string `json:"storage_root,omitempty"`
 
@@ -4871,6 +4874,9 @@ type GetSchemaRequest struct {
 	// Whether to include schemas in the response for which the principal can
 	// only access selective metadata for
 	IncludeBrowse bool `json:"-" url:"include_browse,omitempty"`
+	// Whether to include the secret storage configuration of the schema in the
+	// response.
+	IncludeSecretStorage bool `json:"-" url:"include_secret_storage,omitempty"`
 
 	ForceSendFields []string `json:"-" url:"-"`
 }
@@ -6115,6 +6121,9 @@ type ListSchemasRequest struct {
 	// Whether to include schemas in the response for which the principal can
 	// only access selective metadata for
 	IncludeBrowse bool `json:"-" url:"include_browse,omitempty"`
+	// Whether to include the secret storage configuration of each schema in the
+	// response.
+	IncludeSecretStorage bool `json:"-" url:"include_secret_storage,omitempty"`
 	// Maximum number of schemas to return. If not set, all the schemas are
 	// returned (not recommended). - when set to a value greater than 0, the
 	// page length is the minimum of this value and a server configured value; -
@@ -9545,6 +9554,9 @@ type SchemaInfo struct {
 	Properties map[string]string `json:"properties,omitempty"`
 	// The unique identifier of the schema.
 	SchemaId string `json:"schema_id,omitempty"`
+	// Secret storage configuration of the schema. Only populated in responses
+	// when **include_secret_storage** is set to true in the request.
+	SecretStorage *SchemaSecretStorage `json:"secret_storage,omitempty"`
 	// Storage location for managed tables within schema.
 	StorageLocation string `json:"storage_location,omitempty"`
 	// Storage root URL for managed tables within schema.
@@ -9563,6 +9575,64 @@ func (s *SchemaInfo) UnmarshalJSON(b []byte) error {
 
 func (s SchemaInfo) MarshalJSON() ([]byte, error) {
 	return marshal.Marshal(s)
+}
+
+// Secret storage configuration of a schema.
+type SchemaSecretStorage struct {
+	// Name of the Unity Catalog connection (for example, an AZURE_KEY_VAULT
+	// connection) backing external secrets in this schema when storage_type is
+	// STORAGE_TYPE_EXTERNAL.
+	ConnectionName string `json:"connection_name,omitempty"`
+	// Secret storage mode for the schema: STORAGE_TYPE_EXTERNAL or
+	// STORAGE_TYPE_UNSPECIFIED.
+	StorageType SchemaSecretStorageType `json:"storage_type,omitempty"`
+
+	ForceSendFields []string `json:"-" url:"-"`
+}
+
+func (s *SchemaSecretStorage) UnmarshalJSON(b []byte) error {
+	return marshal.Unmarshal(b, s)
+}
+
+func (s SchemaSecretStorage) MarshalJSON() ([]byte, error) {
+	return marshal.Marshal(s)
+}
+
+type SchemaSecretStorageType string
+
+const SchemaSecretStorageTypeStorageTypeExternal SchemaSecretStorageType = `STORAGE_TYPE_EXTERNAL`
+
+const SchemaSecretStorageTypeStorageTypeUnspecified SchemaSecretStorageType = `STORAGE_TYPE_UNSPECIFIED`
+
+// String representation for [fmt.Print]
+func (f *SchemaSecretStorageType) String() string {
+	return string(*f)
+}
+
+// Set raw string value and validate it against allowed values
+func (f *SchemaSecretStorageType) Set(v string) error {
+	switch v {
+	case `STORAGE_TYPE_EXTERNAL`, `STORAGE_TYPE_UNSPECIFIED`:
+		*f = SchemaSecretStorageType(v)
+		return nil
+	default:
+		return fmt.Errorf(`value "%s" is not one of "STORAGE_TYPE_EXTERNAL", "STORAGE_TYPE_UNSPECIFIED"`, v)
+	}
+}
+
+// Values returns all possible values for SchemaSecretStorageType.
+//
+// There is no guarantee on the order of the values in the slice.
+func (f *SchemaSecretStorageType) Values() []SchemaSecretStorageType {
+	return []SchemaSecretStorageType{
+		SchemaSecretStorageTypeStorageTypeExternal,
+		SchemaSecretStorageTypeStorageTypeUnspecified,
+	}
+}
+
+// Type always returns SchemaSecretStorageType to satisfy [pflag.Value] interface
+func (f *SchemaSecretStorageType) Type() string {
+	return "SchemaSecretStorageType"
 }
 
 // A secret stored in Unity Catalog. Secrets are three-level namespace objects
@@ -11566,6 +11636,9 @@ type UpdateSchema struct {
 	Owner string `json:"owner,omitempty"`
 	// A map of key-value properties attached to the securable.
 	Properties map[string]string `json:"properties,omitempty"`
+	// Secret storage configuration of the schema. Set **storage_type** to
+	// STORAGE_TYPE_UNSPECIFIED to unbind the schema from its connection.
+	SecretStorage *SchemaSecretStorage `json:"secret_storage,omitempty"`
 
 	ForceSendFields []string `json:"-" url:"-"`
 }
